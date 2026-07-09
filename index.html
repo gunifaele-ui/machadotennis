@@ -1,15 +1,12 @@
-<!-- html-blob-id: index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machado's Grand Slam</title>
-    <!-- Configurações de PWA para Mobile -->
     <meta name="theme-color" content="#13301c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- Link corrigido para o arquivo físico do manifesto -->
     <link rel="manifest" href="./manifest.json">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,7 +29,6 @@
 
     <div id="app" class="flex flex-col min-h-screen max-w-md mx-auto bg-white shadow-xl md:max-w-2xl lg:max-w-4xl">
         
-        <!-- TELA DE LOGIN / PROTEÇÃO POR SENHA -->
         <div v-if="!autenticado" class="fixed inset-0 bg-tennis-dark flex justify-center items-center z-50 p-4">
             <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-full border-t-4 border-tennis-neon">
                 <div class="w-16 h-16 bg-tennis-light rounded-full flex items-center justify-center mx-auto mb-3 text-tennis-brand text-2xl shadow-inner">
@@ -45,7 +41,6 @@
             </div>
         </div>
 
-        <!-- CONTEÚDO PRINCIPAL -->
         <template v-if="autenticado">
             <header class="bg-tennis-brand text-white px-4 py-4 flex justify-between items-center sticky top-0 z-40 shadow-md">
                 <div class="flex items-center gap-3">
@@ -246,7 +241,7 @@
                         <div v-for="estat in locaisEstatísticas" :key="estat.nome" class="bg-white border border-tennis-border rounded-xl p-3 flex gap-3 items-center shadow-sm">
                             <img :src="estat.foto" class="w-16 h-16 rounded-lg object-cover shadow-sm">
                             <div class="flex-grow min-w-0 text-xs text-slate-500 font-medium grid grid-cols-2 gap-y-0.5">
-                                <h4 class="text-sm font-bold text-slate-800 col-span-2 truncate">{{ estat.nome }}</h4>
+                                <h4 class="text-sm font-bold text-slate-800 col-span-2 truncate">{{ 'Saibro' }}</h4>
                                 <p>Jogos: <span class="font-mono text-slate-700 font-bold">{{ !estat.total ? 0 : estat.total }}</span></p>
                                 <p>Aproveitamento: <span class="font-mono text-tennis-accent font-bold">{{ calcularAproveitamentoLocal(estat) }}%</span></p>
                                 <p>Vitórias: <span class="font-mono text-emerald-600 font-bold">{{ loggedInUser === 1 ? estat.vitoriasFilho : estat.vitoriasPai }}</span></p>
@@ -443,7 +438,7 @@
                     let stats = { setsFilho: 0, setsPai: 0, gamesFilho: 0, gamesPai: 0 };
                     filteredMatchesForStats.value.forEach(m => {
                         stats.gamesFilho += (m.set1_j1 || 0) + (m.set2_j1 || 0) + (m.set3_j1 || 0);
-                        stats.gamesPai += (m.set1_j2 || 0) + (m.set2_j2 || 0) + (m.set3_j2 || 0);
+                        stats.gamesPai += (m.set1_j2 || 0) + (m.set2_j2 || 0) + (m.set3_j1 || 0);
 
                         if ((m.set1_j1 || 0) > (m.set1_j2 || 0)) stats.setsFilho++; else if ((m.set1_j2 || 0) > (m.set1_j1 || 0)) stats.setsPai++;
                         if ((m.set2_j1 || 0) > (m.set2_j2 || 0)) stats.setsFilho++; else if ((m.set2_j2 || 0) > (m.set2_j1 || 0)) stats.setsPai++;
@@ -528,8 +523,9 @@
                     });
 
                     if ('serviceWorker' in navigator) {
+                        // Correção do registro físico para ler a rota oficial da Vercel
                         navigator.serviceWorker.register('./sw.js')
-                        .then(() => console.log('Service Worker Registrado Ativo!'))
+                        .then(() => console.log('Service Worker Registrado com sucesso!'))
                         .catch(err => console.log('Erro ao registrar SW:', err));
                     }
                 };
