@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;600;700&family=JetBrains+Mono:wght=400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.2/browser-image-compression.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -24,6 +25,10 @@
             }
         }
     </script>
+    <style>
+        .tooltip .tooltip-text { visibility: hidden; opacity: 0; transition: opacity 0.2s; }
+        .tooltip:hover .tooltip-text, .tooltip:focus-within .tooltip-text { visibility: visible; opacity: 1; }
+    </style>
 </head>
 <body class="bg-tennis-light text-slate-800 min-h-screen font-sans antialiased select-none">
 
@@ -44,15 +49,17 @@
         <template v-if="autenticado">
             <header class="bg-tennis-brand text-white px-4 py-4 flex justify-between items-center sticky top-0 z-40 shadow-md">
                 <div class="flex items-center gap-3">
-                    <div class="relative group cursor-pointer" @click="$refs.profileFile.click()">
+                    <div class="relative group" :class="loggedInUser !== 0 ? 'cursor-pointer' : ''" @click="loggedInUser !== 0 ? $refs.profileFile.click() : null">
                         <img :src="activePlayer?.photo" class="w-10 h-10 rounded-full border-2 border-tennis-neon object-cover hover:opacity-85 transition">
-                        <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-[10px]">
+                        <div v-if="loggedInUser !== 0" class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-[10px]">
                             <i class="fa-solid fa-camera text-white"></i>
                         </div>
-                        <input type="file" ref="profileFile" class="hidden" accept="image/*" @change="uploadProfilePhoto">
+                        <input v-if="loggedInUser !== 0" type="file" ref="profileFile" class="hidden" accept="image/*" @change="uploadProfilePhoto">
                     </div>
                     <div class="text-left">
-                        <p class="text-[9px] text-tennis-neon uppercase tracking-wider font-extrabold leading-none mb-0.5">Jogador Ativo</p>
+                        <p class="text-[9px] text-tennis-neon uppercase tracking-wider font-extrabold leading-none mb-0.5">
+                            {{ loggedInUser === 0 ? 'Acesso Convidado' : 'Jogador Ativo' }}
+                        </p>
                         <p class="text-sm font-bold leading-tight">{{ activePlayer?.name }}</p>
                     </div>
                 </div>
@@ -61,8 +68,11 @@
                     <button v-if="deferredPrompt" @click="installPWA" class="text-xs bg-tennis-neon hover:bg-tennis-neon/80 px-2.5 py-1.5 rounded-lg text-tennis-dark font-extrabold flex items-center gap-1 transition animate-bounce">
                         <i class="fa-solid fa-download"></i> Instalar App
                     </button>
-                    <button @click="showProfileModal = true" class="text-xs bg-tennis-accent hover:bg-tennis-accent/80 px-3 py-1.5 rounded-lg text-tennis-neon font-bold flex items-center gap-1 transition">
+                    <button v-if="loggedInUser !== 0" @click="showProfileModal = true" class="text-xs bg-tennis-accent hover:bg-tennis-accent/80 px-3 py-1.5 rounded-lg text-tennis-neon font-bold flex items-center gap-1 transition">
                         <i class="fa-solid fa-sliders"></i> Configurações
+                    </button>
+                    <button v-else @click="logout" class="text-xs bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-white font-bold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
                     </button>
                 </div>
             </header>
@@ -75,7 +85,7 @@
                         <p class="text-xs text-slate-500 font-medium">Histórico oficial de duelos</p>
                     </div>
 
-                    <div class="bg-gradient-to-br from-tennis-brand to-tennis-accent text-white p-5 rounded-2xl shadow-md border border-tennis-accent/30 text-left">
+                    <div class="bg-gradient-to-br from-tennis-brand to-tennis-accent text-white p-5 rounded-2xl shadow-md border border-tennis-accent/30 text-left relative">
                         <p class="text-[10px] text-tennis-neon uppercase tracking-wider font-extrabold mb-1">Atual Detentor da Coroa</p>
                         <div v-if="isConfrontoEmpatado">
                             <h3 class="text-xl font-bold flex items-center gap-2 text-tennis-neon">
@@ -91,6 +101,32 @@
                         </div>
                     </div>
 
+                    <div class="bg-white border border-tennis-border p-4 rounded-xl shadow-sm text-left relative">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <h4 class="text-xs font-bold text-tennis-brand uppercase tracking-wider">Sequências Atuais & Recordes</h4>
+                            <div class="tooltip relative inline-block cursor-pointer text-slate-400 hover:text-tennis-accent">
+                                <i class="fa-solid fa-circle-info text-[11px]"></i>
+                                <span class="tooltip-text absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg shadow-xl font-normal leading-relaxed z-50">
+                                    <strong>Rachas e Sequências:</strong> Mostra quem está em uma sequência de vitórias consecutivas no momento e qual foi a maior sequência de vitórias consecutivas registrada na história do app.
+                                </span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block px-2 py-0.5 rounded font-extrabold text-[10px]" :class="sequenciaAtual.jogadorId === 1 ? 'bg-tennis-brand text-white' : 'bg-tennis-neon text-tennis-dark'">ATUAL</span>
+                                <p class="text-slate-700 font-medium">
+                                    {{ sequenciaAtual.total > 0 ? (sequenciaAtual.jogadorId === 1 ? 'Gustavo' : 'Otávio') + ' vem de uma sequência de ' + sequenciaAtual.total + ' vitória(s)!' : 'Nenhuma sequência ativa.' }}
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 border-t pt-2 border-slate-100">
+                                <span class="inline-block bg-amber-500 text-tennis-dark px-2 py-0.5 rounded font-extrabold text-[10px]">RECORDE</span>
+                                <p class="text-slate-600">
+                                    A maior sequência histórica é de <strong>{{ maiorSequenciaHistorica.total }} vitórias</strong>, conquistada por {{ maiorSequenciaHistorica.jogadorId === 1 ? 'Gustavo' : 'Otávio' }}.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4 text-left">
                         <div v-for="p in players" :key="p.id" class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
                             <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Vitórias ({{ p.id === 1 ? 'Gustavo' : 'Otávio' }})</span>
@@ -103,13 +139,13 @@
 
                     <div class="space-y-2">
                         <div class="flex justify-between items-center">
-                            <h4 class="text-xs font-bold text-tennis-brand uppercase tracking-wider">Últimos Confrontos</h4>
-                            <button @click="phoneActiveTab = 'history'" class="text-xs text-tennis-accent font-semibold flex items-center gap-1">Ver todos <i class="fa-solid fa-chevron-right text-[9px]"></i></button>
+                            <h4 class="text-xs font-bold text-tennis-brand uppercase tracking-wider">Últimos Confrontos Oficiais</h4>
+                            <button @click="phoneActiveTab = 'history'; historyFilter = 'oficial'" class="text-xs text-tennis-accent font-semibold flex items-center gap-1">Ver todos <i class="fa-solid fa-chevron-right text-[9px]"></i></button>
                         </div>
                         
                         <div class="flex overflow-x-auto gap-4 pb-3 snap-x scrollbar-thin">
-                            <div v-if="matches.length === 0" class="w-full text-center text-xs text-slate-400 py-12 bg-white rounded-xl border border-dashed">Nenhuma partida registrada.</div>
-                            <div v-for="match in sortedMatches.slice(0, 5)" :key="match.id" class="w-64 aspect-square bg-white rounded-xl border border-tennis-border overflow-hidden flex flex-col shadow-sm flex-shrink-0 snap-start">
+                            <div v-if="dashboardMatches.length === 0" class="w-full text-center text-xs text-slate-400 py-12 bg-white rounded-xl border border-dashed">Nenhuma partida oficial registrada.</div>
+                            <div v-for="match in dashboardMatches.slice(0, 5)" :key="match.id" class="w-64 aspect-square bg-white rounded-xl border border-tennis-border overflow-hidden flex flex-col shadow-sm flex-shrink-0 snap-start">
                                 <div class="relative flex-grow min-h-0 bg-slate-200">
                                     <img :src="getLocalPhoto(match.local)" class="w-full h-full object-cover">
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
@@ -200,27 +236,101 @@
                     </div>
 
                     <div class="bg-white p-1.5 rounded-xl border border-tennis-border flex gap-1">
-                        <button v-for="t in ['oficial', 'treino']" :key="t" @click="statsFilter = t" :class="['flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition', statsFilter === t ? 'bg-tennis-brand text-white' : 'text-slate-500']">Partidas {{ t }}s</button>
+                        <button v-for="t in ['oficial', 'treino']" :key="t" @click="statsFilter = t; atualizarGrafico();" :class="['flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition', statsFilter === t ? 'bg-tennis-brand text-white' : 'text-slate-500']">Partidas {{ t }}s</button>
                     </div>
 
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Filtrar por Ano</label>
                         <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none snap-x">
-                            <button @click="statsYearFilter = 'todos'" :class="['px-3 py-1.5 text-xs rounded-lg font-medium border transition shrink-0 snap-start', statsYearFilter === 'todos' ? 'bg-tennis-accent text-white border-tennis-accent' : 'bg-white text-slate-600 border-tennis-border']">Todos</button>
-                            <button v-for="ano in listaAnosDisponiveis" :key="ano" @click="statsYearFilter = ano" :class="['px-4 py-1.5 text-xs rounded-lg font-mono font-medium border transition shrink-0 snap-start', statsYearFilter === ano ? 'bg-tennis-accent text-white border-tennis-accent' : 'bg-white text-slate-600 border-tennis-border']">{{ ano }}</button>
+                            <button @click="statsYearFilter = 'todos'; atualizarGrafico();" :class="['px-3 py-1.5 text-xs rounded-lg font-medium border transition shrink-0 snap-start', statsYearFilter === 'todos' ? 'bg-tennis-accent text-white border-tennis-accent' : 'bg-white text-slate-600 border-tennis-border']">Todos</button>
+                            <button v-for="ano in listaAnosDisponiveis" :key="ano" @click="statsYearFilter = ano; atualizarGrafico();" :class="['px-4 py-1.5 text-xs rounded-lg font-mono font-medium border transition shrink-0 snap-start', statsYearFilter === ano ? 'bg-tennis-accent text-white border-tennis-accent' : 'bg-white text-slate-600 border-tennis-border']">{{ ano }}</button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
-                            <h4 class="text-[10px] font-bold uppercase text-slate-400 mb-2">Sets Vencidos totais</h4>
-                            <p class="text-xs font-bold text-tennis-brand">Gustavo: <span class="font-mono text-base text-tennis-accent">{{ totaisAcumulados.setsFilho }}</span></p>
-                            <p class="text-xs font-bold text-slate-700 mt-1">Otávio: <span class="font-mono text-base text-amber-600">{{ totaisAcumulados.setsPai }}</span></p>
+                    <div class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
+                        <div class="flex items-center gap-1.5 mb-3">
+                            <h3 class="text-xs font-bold uppercase text-slate-500">Evolução Temporal do Confronto</h3>
+                            <div class="tooltip relative inline-block cursor-pointer text-slate-400 hover:text-tennis-accent">
+                                <i class="fa-solid fa-circle-info text-[11px]"></i>
+                                <span class="tooltip-text absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg shadow-xl font-normal leading-relaxed z-50">
+                                    <strong>Evolução Temporal:</strong> Gráfico de linha que exibe a contagem acumulada de vitórias de Gustavo e Otávio ao longo do tempo. Permite visualizar os momentos de arrancada de cada um na história.
+                                </span>
+                            </div>
                         </div>
-                        <div class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
-                            <h4 class="text-[10px] font-bold uppercase text-slate-400 mb-2">Games Vencidos totais</h4>
-                            <p class="text-xs font-bold text-tennis-brand">Gustavo: <span class="font-mono text-base text-tennis-accent">{{ totaisAcumulados.gamesFilho }}</span></p>
-                            <p class="text-xs font-bold text-slate-700 mt-1">Otávio: <span class="font-mono text-base text-amber-600">{{ totaisAcumulados.gamesPai }}</span></p>
+                        <div class="relative w-full h-48">
+                            <canvas id="chartEvolucao"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-white p-3 rounded-xl border border-tennis-border shadow-sm flex flex-col justify-between">
+                            <h4 class="text-[9px] font-bold uppercase text-slate-400 mb-1 leading-tight">Jogos Ganhos</h4>
+                            <div>
+                                <p class="text-[11px] font-bold text-tennis-brand">G: <span class="font-mono text-sm text-tennis-accent">{{ totaisAcumulados.jogosFilho }}</span></p>
+                                <p class="text-[11px] font-bold text-slate-700 mt-0.5">O: <span class="font-mono text-sm text-amber-600">{{ totaisAcumulados.jogosPai }}</span></p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-tennis-border shadow-sm flex flex-col justify-between">
+                            <h4 class="text-[9px] font-bold uppercase text-slate-400 mb-1 leading-tight">Sets Vencidos</h4>
+                            <div>
+                                <p class="text-[11px] font-bold text-tennis-brand">G: <span class="font-mono text-sm text-tennis-accent">{{ totaisAcumulados.setsFilho }}</span></p>
+                                <p class="text-[11px] font-bold text-slate-700 mt-0.5">O: <span class="font-mono text-sm text-amber-600">{{ totaisAcumulados.setsPai }}</span></p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-tennis-border shadow-sm flex flex-col justify-between">
+                            <h4 class="text-[9px] font-bold uppercase text-slate-400 mb-1 leading-tight">Games Vencidos</h4>
+                            <div>
+                                <p class="text-[11px] font-bold text-tennis-brand">G: <span class="font-mono text-sm text-tennis-accent">{{ totaisAcumulados.gamesFilho }}</span></p>
+                                <p class="text-[11px] font-bold text-slate-700 mt-0.5">O: <span class="font-mono text-sm text-amber-600">{{ totaisAcumulados.gamesPai }}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
+                        <div class="flex items-center gap-1.5 mb-3">
+                            <h3 class="text-xs font-bold uppercase text-slate-500">Desempenho sob Pressão (Clutch Factor)</h3>
+                            <div class="tooltip relative inline-block cursor-pointer text-slate-400 hover:text-tennis-accent">
+                                <i class="fa-solid fa-circle-info text-[11px]"></i>
+                                <span class="tooltip-text absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg shadow-xl font-normal leading-relaxed z-50">
+                                    <strong>Clutch Factor:</strong> Avalia o lado mental. O "3º Set Decisivo" mostra quem ganha as partidas que vão para o desempate. "Sets Longos" mostra o aproveitamento em sets disputados no limite (7-5 ou tie-breaks).
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <p class="font-semibold text-slate-500 text-[10px] uppercase mb-1.5">3º Set Decisivo (Negra)</p>
+                                <p class="text-tennis-brand font-bold">Gustavo: <span class="font-mono font-medium text-slate-700">{{ totaisClutch.terceiroSetFilho }} vits</span></p>
+                                <p class="text-amber-600 font-bold mt-0.5">Otávio: <span class="font-mono font-medium text-slate-700">{{ totaisClutch.terceiroSetPai }} vits</span></p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <p class="font-semibold text-slate-500 text-[10px] uppercase mb-1.5">Sets Longos (7-5 / Tie)</p>
+                                <p class="text-tennis-brand font-bold">Gustavo: <span class="font-mono font-medium text-slate-700">{{ totaisClutch.setsLongosFilho }} vits</span></p>
+                                <p class="text-amber-600 font-bold mt-0.5">Otávio: <span class="font-mono font-medium text-slate-700">{{ totaisClutch.setsLongosPai }} vits</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-tennis-border shadow-sm">
+                        <div class="flex items-center gap-1.5 mb-3">
+                            <h3 class="text-xs font-bold uppercase text-slate-500">Placares Dominantes (Pneus & Bicicletas)</h3>
+                            <div class="tooltip relative inline-block cursor-pointer text-slate-400 hover:text-tennis-accent">
+                                <i class="fa-solid fa-circle-info text-[11px]"></i>
+                                <span class="tooltip-text absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg shadow-xl font-normal leading-relaxed z-50">
+                                    <strong>Pneus e Bicicletas:</strong> Registra as vitórias mais avassaladoras de sets. Um set ganho por 6-0 é classificado como "Pneu" (Bagel) e um set ganho por 6-1 como "Bicicleta" (Breadstick).
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <p class="font-bold text-tennis-brand border-b pb-1 mb-1.5">Gustavo Machado</p>
+                                <p class="text-slate-600">Pneus aplicados: <span class="font-mono font-bold text-tennis-accent">{{ totaisAcumulados.pneusFilho }}</span></p>
+                                <p class="text-slate-600 mt-0.5">Bicicletas: <span class="font-mono font-bold text-tennis-accent">{{ totaisAcumulados.bicicletasFilho }}</span></p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <p class="font-bold text-amber-600 border-b pb-1 mb-1.5">Otávio Machado</p>
+                                <p class="text-slate-600">Pneus aplicados: <span class="font-mono font-bold text-amber-600">{{ totaisAcumulados.pneusPai }}</span></p>
+                                <p class="text-slate-600 mt-0.5">Bicicletas: <span class="font-mono font-bold text-amber-600">{{ totaisAcumulados.bicicletasPai }}</span></p>
+                            </div>
                         </div>
                     </div>
 
@@ -241,27 +351,36 @@
                         <div v-for="estat in locaisEstatísticas" :key="estat.nome" class="bg-white border border-tennis-border rounded-xl p-3 flex gap-3 items-center shadow-sm">
                             <img :src="estat.foto" class="w-16 h-16 rounded-lg object-cover shadow-sm">
                             <div class="flex-grow min-w-0 text-xs text-slate-500 font-medium grid grid-cols-2 gap-y-0.5">
-                                <h4 class="text-sm font-bold text-slate-800 col-span-2 truncate">{{ 'Saibro' }}</h4>
+                                <h4 class="text-sm font-bold text-slate-800 col-span-2 truncate">{{ estat.nome }}</h4>
                                 <p>Jogos: <span class="font-mono text-slate-700 font-bold">{{ !estat.total ? 0 : estat.total }}</span></p>
                                 <p>Aproveitamento: <span class="font-mono text-tennis-accent font-bold">{{ calcularAproveitamentoLocal(estat) }}%</span></p>
-                                <p>Vitórias: <span class="font-mono text-emerald-600 font-bold">{{ loggedInUser === 1 ? estat.vitoriasFilho : estat.vitoriasPai }}</span></p>
-                                <p>Derrotas: <span class="font-mono text-red-500 font-bold">{{ loggedInUser === 1 ? estat.derrotasFilho : estat.derrotasPai }}</span></p>
+                                <p>Vitórias: <span class="font-mono text-emerald-600 font-bold">{{ (loggedInUser === 0 || loggedInUser === 1) ? estat.vitoriasFilho : estat.vitoriasPai }}</span></p>
+                                <p>Derrotas: <span class="font-mono text-red-500 font-bold">{{ (loggedInUser === 0 || loggedInUser === 1) ? estat.derrotasFilho : estat.derrotasPai }}</span></p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div v-if="phoneActiveTab === 'history'" class="space-y-4 text-left">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-bold text-tennis-brand">Histórico Geral</h2>
-                            <p class="text-xs text-slate-500">Gerenciamento completo das partidas.</p>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-bold text-tennis-brand">Histórico Geral</h2>
+                                <p class="text-xs text-slate-500">Gerenciamento completo das partidas.</p>
+                            </div>
+                            <span class="bg-tennis-light border text-tennis-brand font-mono text-xs px-2.5 py-1 rounded-full font-bold">{{ filteredHistoryMatches.length }} Jogos</span>
                         </div>
-                        <span class="bg-tennis-light border text-tennis-brand font-mono text-xs px-2.5 py-1 rounded-full font-bold">{{ matches.length }} Jogos</span>
+                        
+                        <div class="bg-slate-100 p-1 rounded-xl flex gap-1 w-full border">
+                            <button @click="historyFilter = 'todos'" :class="['flex-1 py-1.5 text-xs font-semibold rounded-lg transition', historyFilter === 'todos' ? 'bg-tennis-brand text-white shadow' : 'text-slate-500']">Todas</button>
+                            <button @click="historyFilter = 'oficial'" :class="['flex-1 py-1.5 text-xs font-semibold rounded-lg transition', historyFilter === 'oficial' ? 'bg-tennis-brand text-white shadow' : 'text-slate-500']">Oficiais</button>
+                            <button @click="historyFilter = 'treino'" :class="['flex-1 py-1.5 text-xs font-semibold rounded-lg transition', historyFilter === 'treino' ? 'bg-tennis-brand text-white shadow' : 'text-slate-500']">Treino</button>
+                        </div>
                     </div>
+
                     <div class="space-y-3">
-                        <div v-if="matches.length === 0" class="text-xs text-slate-400 text-center py-8 bg-white border border-dashed rounded-xl">Nenhum jogo cadastrado.</div>
-                        <div v-for="match in sortedMatches" :key="match.id" class="bg-white p-4 rounded-xl border border-tennis-border flex justify-between items-center shadow-sm">
+                        <div v-if="filteredHistoryMatches.length === 0" class="text-xs text-slate-400 text-center py-8 bg-white border border-dashed rounded-xl">Nenhum jogo encontrado com este filtro.</div>
+                        <div v-for="match in filteredHistoryMatches" :key="match.id" class="bg-white p-4 rounded-xl border border-tennis-border flex justify-between items-center shadow-sm">
                             <div class="space-y-1 min-w-0">
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <span v-if="match.status === 'Incompleto'" class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500 text-tennis-dark">Incompleto</span>
@@ -272,7 +391,7 @@
                                 <p class="text-sm font-bold text-slate-800 truncate">{{ match.local }} <span class="text-xs font-normal text-slate-400">({{ match.quadra }})</span></p>
                                 <p class="text-xs font-mono font-bold text-tennis-accent bg-tennis-light px-2 py-0.5 rounded inline-block">{{ formatScore(match) }}</p>
                             </div>
-                            <div class="flex gap-1 shrink-0">
+                            <div v-if="loggedInUser !== 0" class="flex gap-1 shrink-0">
                                 <button @click="carregarParaEdicao(match)" class="text-slate-500 hover:text-tennis-brand p-2 transition"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button @click="apagarPartida(match)" class="text-slate-400 hover:text-red-600 p-2 transition"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
@@ -282,22 +401,24 @@
             </main>
 
             <nav class="bg-white border-t border-tennis-border fixed bottom-0 left-0 right-0 py-2.5 flex justify-around items-center shadow-lg z-40 max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
-                <button v-for="tab in [{id:'dashboard', icon:'chart-simple', label:'Dashboard'}, {id:'new-game', icon:'circle-plus', label:'Novo Jogo'}, {id:'stats', icon:'ranking-star', label:'Estatísticas'}, {id:'history', icon:'list-check', label:'Histórico'}]" :key="tab.id" @click="phoneActiveTab = tab.id" :class="['flex flex-col items-center gap-1 text-[10px]', phoneActiveTab === tab.id ? 'text-tennis-brand font-bold' : 'text-slate-400']">
-                    <i :class="'fa-solid fa-'+tab.icon+' text-lg'"></i>{{ tab.label }}
-                </button>
+                <template v-for="tab in [{id:'dashboard', icon:'chart-simple', label:'Dashboard'}, {id:'new-game', icon:'circle-plus', label:'Novo Jogo'}, {id:'stats', icon:'ranking-star', label:'Estatísticas'}, {id:'history', icon:'list-check', label:'Histórico'}]" :key="tab.id">
+                    <button v-if="tab.id !== 'new-game' || loggedInUser !== 0" @click="phoneActiveTab = tab.id; if(tab.id==='stats') { $nextTick(() => atualizarGrafico()); }" :class="['flex flex-col items-center gap-1 text-[10px]', phoneActiveTab === tab.id ? 'text-tennis-brand font-bold' : 'text-slate-400']">
+                        <i :class="'fa-solid fa-'+tab.icon+' text-lg'"></i>{{ tab.label }}
+                    </button>
+                </template>
             </nav>
 
-            <div v-if="showProfileModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div v-if="showProfileModal && loggedInUser !== 0" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-2xl p-5 w-full max-w-md shadow-xl text-left flex flex-col max-h-[85vh]">
                     <div class="mb-3">
-                        <h3 class="text-base font-bold text-tennis-brand">Troca de Usuário e Configurações</h3>
+                        <h3 class="text-base font-bold text-tennis-brand">Configurações do Sistema</h3>
                         <p class="text-[11px] text-slate-500">Gerencie perfis e mídias do sistema.</p>
                     </div>
                     <div class="flex-grow overflow-y-auto space-y-4 pr-1">
                         <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">Jogador Ativo</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">Jogador Conectado</span>
                             <div class="space-y-2">
-                                <div v-for="player in players" :key="player.id" @click="loggedInUser = player.id" :class="['flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer', loggedInUser === player.id ? 'bg-tennis-light border-tennis-brand ring-2 ring-tennis-brand/10' : 'border-slate-200']">
+                                <div v-for="player in players" :key="player.id" :class="['flex items-center gap-3 p-2.5 rounded-xl border opacity-90 select-none bg-slate-50', loggedInUser === player.id ? 'border-tennis-brand ring-2 ring-tennis-brand/10' : 'border-slate-200 bg-slate-100/50']">
                                     <img :src="player.photo" class="w-9 h-9 rounded-full object-cover border">
                                     <div class="flex-grow min-w-0">
                                         <p class="text-xs font-bold text-slate-800 truncate">{{ player.name }}</p>
@@ -307,6 +428,13 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div>
+                            <button @click="logout" class="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair da Conta
+                            </button>
+                        </div>
+
                         <hr class="border-slate-100">
                         <div>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Imagens e Exclusão de Locais</span>
@@ -329,7 +457,7 @@
                             </div>
                         </div>
                     </div>
-                    <button @click="showProfileModal = false" class="w-full bg-tennis-brand text-white mt-4 py-2 rounded-lg font-bold text-xs text-center">Salvar & Fechar</button>
+                    <button @click="showProfileModal = false" class="w-full bg-tennis-brand text-white mt-4 py-2 rounded-lg font-bold text-xs text-center shadow">Fechar</button>
                 </div>
             </div>
         </template>
@@ -358,25 +486,50 @@
         createApp({
             setup() {
                 const phoneActiveTab = ref('dashboard');
-                const loggedInUser = ref(1); 
+                // Carrega do sessionStorage ou define como 1 por padrão
+                const loggedInUser = ref(parseInt(sessionStorage.getItem('app_machado_user') || '1', 10)); 
                 const showProfileModal = ref(false);
                 const statsFilter = ref('oficial');
                 const statsYearFilter = ref('todos'); 
+                const historyFilter = ref('todos'); 
                 const deferredPrompt = ref(null); 
                 const FOTO_PADRAO = "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=400&q=80";
 
                 const autenticado = ref(sessionStorage.getItem('app_machado_auth') === 'true');
                 const senhaInput = ref('');
+                let instaciaGrafico = null;
 
                 const verificarSenha = () => {
-                    if (senhaInput.value === '1977') {
+                    if (senhaInput.value === '1998') {
+                        loggedInUser.value = 1; 
                         autenticado.value = true;
                         sessionStorage.setItem('app_machado_auth', 'true');
+                        sessionStorage.setItem('app_machado_user', '1');
+                        carregarDadosDoBanco();
+                    } else if (senhaInput.value === '1977') {
+                        loggedInUser.value = 2; 
+                        autenticado.value = true;
+                        sessionStorage.setItem('app_machado_auth', 'true');
+                        sessionStorage.setItem('app_machado_user', '2');
+                        carregarDadosDoBanco();
+                    } else if (senhaInput.value === '0000') {
+                        loggedInUser.value = 0; // Código 0 representa o modo visualizador neutro
+                        autenticado.value = true;
+                        sessionStorage.setItem('app_machado_auth', 'true');
+                        sessionStorage.setItem('app_machado_user', '0');
                         carregarDadosDoBanco();
                     } else {
                         alert('Senha incorreta! Tente novamente.');
                         senhaInput.value = '';
                     }
+                };
+
+                const logout = () => {
+                    autenticado.value = false;
+                    senhaInput.value = '';
+                    showProfileModal.value = false;
+                    sessionStorage.removeItem('app_machado_auth');
+                    sessionStorage.removeItem('app_machado_user');
                 };
 
                 const players = ref([
@@ -388,9 +541,24 @@
 
                 const form = ref({ id: null, tipo: 'oficial', localSelecionado: '', novoLocalNome: '', quadra: 'Saibro', tipoTerceiroSet: 'super', set1_j1: 0, set1_j2: 0, set2_j1: 0, set2_j2: 0, set3_j1: 0, set3_j2: 0, data: new Date().toISOString().split('T')[0] });
 
-                const activePlayer = computed(() => players.value.find(p => p.id === loggedInUser.value));
+                // Computa o perfil ativo. Se for 0, gera um objeto virtual estático de visualizador
+                const activePlayer = computed(() => {
+                    if (loggedInUser.value === 0) {
+                        return { id: 0, name: "Visitante (Visualizador)", photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80" };
+                    }
+                    return players.value.find(p => p.id === loggedInUser.value);
+                });
+                
                 const isConfrontoEmpatado = computed(() => players.value[0]?.wins === players.value[1]?.wins);
+                
                 const sortedMatches = computed(() => [...matches.value].sort((a, b) => new Date(b.data) - new Date(a.data)));
+                const dashboardMatches = computed(() => sortedMatches.value.filter(m => m.tipo === 'oficial'));
+                
+                const filteredHistoryMatches = computed(() => {
+                    if (historyFilter.value === 'todos') return sortedMatches.value;
+                    return sortedMatches.value.filter(m => m.tipo === historyFilter.value);
+                });
+
                 const currentKing = computed(() => players.value[0].wins >= players.value[1].wins ? players.value[0] : players.value[1]);
                 const currentLoser = computed(() => {
                     if (players.value.length < 2) return null;
@@ -416,6 +584,81 @@
                     });
                 });
 
+                // Lógica de Rachas e Sequências (Streaks)
+                const sequenciaAtual = computed(() => {
+                    const oficiaisFinalizadas = [...matches.value]
+                        .filter(m => m.tipo === 'oficial' && m.status !== 'Incompleto')
+                        .sort((a, b) => new Date(b.data) - new Date(a.data));
+                    
+                    if (oficiaisFinalizadas.length === 0) return { jogadorId: 0, total: 0 };
+                    
+                    const primeiroVencedor = oficiaisFinalizadas[0].vencedor_id;
+                    let contador = 0;
+                    
+                    for (let match of oficiaisFinalizadas) {
+                        if (match.vencedor_id === primeiroVencedor) {
+                            contador++;
+                        } else {
+                            break;
+                        }
+                    }
+                    return { jogadorId: primeiroVencedor, total: contador };
+                });
+
+                const maiorSequenciaHistorica = computed(() => {
+                    const oficiaisFinalizadasCr = [...matches.value]
+                        .filter(m => m.tipo === 'oficial' && m.status !== 'Incompleto')
+                        .sort((a, b) => new Date(a.data) - new Date(b.data));
+                        
+                    if (oficiaisFinalizadasCr.length === 0) return { jogadorId: 0, total: 0 };
+                    
+                    let maxSeq = 0;
+                    let maxJogador = 0;
+                    let atualSeq = 0;
+                    let atualJogador = 0;
+                    
+                    oficiaisFinalizadasCr.forEach(m => {
+                        if (m.vencedor_id === atualJogador) {
+                            atualSeq++;
+                        } else {
+                            if (atualSeq > maxSeq) {
+                                maxSeq = atualSeq;
+                                maxJogador = maxJogador;
+                            }
+                            atualJogador = m.vencedor_id;
+                            atualSeq = 1;
+                        }
+                    });
+                    
+                    if (atualSeq > maxSeq) {
+                        maxSeq = atualSeq;
+                        maxJogador = atualJogador;
+                    }
+                    
+                    return { jogadorId: maxJogador, total: maxSeq };
+                });
+
+                // Lógica de Fator Psicológico (Clutch Factor)
+                const totaisClutch = computed(() => {
+                    let clutch = { terceiroSetFilho: 0, terceiroSetPai: 0, setsLongosFilho: 0, setsLongosPai: 0 };
+                    
+                    filteredMatchesForStats.value.forEach(m => {
+                        const testSetLongo = (j1, j2) => (j1 === 7 && (j2 === 5 || j2 === 6));
+                        if (testSetLongo(m.set1_j1, m.set1_j2)) clutch.setsLongosFilho++;
+                        if (testSetLongo(m.set1_j2, m.set1_j1)) clutch.setsLongosPai++;
+                        if (testSetLongo(m.set2_j1, m.set2_j2)) clutch.setsLongosFilho++;
+                        if (testSetLongo(m.set2_j2, m.set2_j1)) clutch.setsLongosPai++;
+                        if (m.set3_j1 !== null && m.set3_j2 !== null && m.tipoTerceiroSet === 'normal' && testSetLongo(m.set3_j1, m.set3_j2)) clutch.setsLongosFilho++;
+                        if (m.set3_j1 !== null && m.set3_j2 !== null && m.tipoTerceiroSet === 'normal' && testSetLongo(m.set3_j2, m.set3_j1)) clutch.setsLongosPai++;
+
+                        if (m.status !== 'Incompleto' && m.set3_j1 !== null && m.set3_j2 !== null && (m.set3_j1 > 0 || m.set3_j2 > 0)) {
+                            if (m.vencedor_id === 1) clutch.terceiroSetFilho++;
+                            if (m.vencedor_id === 2) clutch.terceiroSetPai++;
+                        }
+                    });
+                    return clutch;
+                });
+
                 const validarInputSet = (campo) => {
                     let val = parseInt(form.value[campo], 10);
                     if (isNaN(val) || val < 0) form.value[campo] = 0;
@@ -435,22 +678,85 @@
                 };
 
                 const totaisAcumulados = computed(() => {
-                    let stats = { setsFilho: 0, setsPai: 0, gamesFilho: 0, gamesPai: 0 };
+                    let stats = { jogosFilho: 0, jogosPai: 0, setsFilho: 0, setsPai: 0, gamesFilho: 0, gamesPai: 0, pneusFilho: 0, pneusPai: 0, bicicletasFilho: 0, bicicletasPai: 0 };
                     filteredMatchesForStats.value.forEach(m => {
                         stats.gamesFilho += (m.set1_j1 || 0) + (m.set2_j1 || 0) + (m.set3_j1 || 0);
-                        stats.gamesPai += (m.set1_j2 || 0) + (m.set2_j2 || 0) + (m.set3_j1 || 0);
+                        stats.gamesPai += (m.set1_j2 || 0) + (m.set2_j2 || 0) + (m.set3_j2 || 0);
+
+                        const checarDominancia = (j1, j2, jEspecial) => {
+                            if (j1 === 6 && j2 === 0) if(jEspecial === 1) stats.pneusFilho++; else stats.pneusPai++;
+                            if (j1 === 6 && j2 === 1) if(jEspecial === 1) stats.bicicletasFilho++; else stats.bicicletasPai++;
+                        };
+                        checarDominancia(m.set1_j1, m.set1_j2, 1); checarDominancia(m.set1_j2, m.set1_j1, 2);
+                        checarDominancia(m.set2_j1, m.set2_j2, 1); checarDominancia(m.set2_j2, m.set2_j1, 2);
+                        if (m.set3_j1 !== null && m.set3_j2 !== null && m.tipoTerceiroSet === 'normal') {
+                            checarDominancia(m.set3_j1, m.set3_j2, 1); checarDominancia(m.set3_j2, m.set3_j1, 2);
+                        }
 
                         if ((m.set1_j1 || 0) > (m.set1_j2 || 0)) stats.setsFilho++; else if ((m.set1_j2 || 0) > (m.set1_j1 || 0)) stats.setsPai++;
                         if ((m.set2_j1 || 0) > (m.set2_j2 || 0)) stats.setsFilho++; else if ((m.set2_j2 || 0) > (m.set2_j1 || 0)) stats.setsPai++;
+                        
                         if (m.set3_j1 || m.set3_j2) {
                             if ((m.set3_j1 || 0) > (m.set3_j2 || 0)) stats.setsFilho++; else if ((m.set3_j2 || 0) > (m.set3_j1 || 0)) stats.setsPai++;
+                        }
+
+                        if (m.status !== 'Incompleto') {
+                            if (m.vencedor_id === 1) stats.jogosFilho++;
+                            else if (m.vencedor_id === 2) stats.jogosPai++;
                         }
                     });
                     return stats;
                 });
 
+                const atualizarGrafico = () => {
+                    const ctx = document.getElementById('chartEvolucao');
+                    if (!ctx) return;
+
+                    const partidasCronologicas = [...filteredMatchesForStats.value]
+                        .filter(m => m.status !== 'Incompleto')
+                        .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+                    let acumuladoFilho = 0;
+                    let acumuladoPai = 0;
+                    
+                    const labels = ['Início'];
+                    const dataFilho = [0];
+                    const dataPai = [0];
+
+                    partidasCronologicas.forEach((m, index) => {
+                        if (m.vencedor_id === 1) acumuladoFilho++;
+                        if (m.vencedor_id === 2) acumuladoPai++;
+                        
+                        labels.push(m.data || `J${index+1}`);
+                        dataFilho.push(acumuladoFilho);
+                        dataPai.push(acumuladoPai);
+                    });
+
+                    if (instaciaGrafico) instaciaGrafico.destroy();
+
+                    instaciaGrafico = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: 'Gustavo', data: dataFilho, borderColor: '#306c42', backgroundColor: 'transparent', tension: 0.1, borderWidth: 2.5 },
+                                { label: 'Otávio', data: dataPai, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.1, borderWidth: 2.5 }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { font: { family: 'Poppins', size: 10 } } } },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 8 } } },
+                                y: { grid: { color: '#e2e8f0' }, ticks: { font: { family: 'JetBrains Mono', size: 9 }, stepSize: 1 } }
+                            }
+                        }
+                    });
+                };
+
                 const carregarDadosDoBanco = async () => {
-                    if (!autenticado.value) return;
+                    // Carrega mesmo em modo visualizador
                     try {
                         const qPlayers = await window.FB.getDocs(window.FB.collection(window.FB.db, "jogadores"));
                         
@@ -488,12 +794,7 @@
                 };
 
                 const comprimirEConverterImagem = async (file) => {
-                    const opcoes = {
-                        maxSizeMB: 0.15, 
-                        maxWidthOrHeight: 600, 
-                        useWebWorker: true,
-                        fileType: 'image/jpeg'
-                    };
+                    const opcoes = { maxSizeMB: 0.15, maxWidthOrHeight: 600, useWebWorker: true, fileType: 'image/jpeg' };
                     try {
                         const arquivoComprimido = await imageCompression(file, opcoes);
                         return new Promise((resolve) => {
@@ -502,7 +803,6 @@
                             reader.onloadend = () => resolve(reader.result);
                         });
                     } catch (error) {
-                        console.error("Erro na biblioteca de compressão:", error);
                         return new Promise((resolve) => {
                             const reader = new FileReader();
                             reader.readAsDataURL(file);
@@ -516,17 +816,11 @@
                         e.preventDefault();
                         deferredPrompt.value = e;
                     });
-
                     window.addEventListener('appinstalled', () => {
                         deferredPrompt.value = null;
-                        alert('Machado\'s Grand Slam instalado com sucesso!');
                     });
-
                     if ('serviceWorker' in navigator) {
-                        // Correção do registro físico para ler a rota oficial da Vercel
-                        navigator.serviceWorker.register('./sw.js')
-                        .then(() => console.log('Service Worker Registrado com sucesso!'))
-                        .catch(err => console.log('Erro ao registrar SW:', err));
+                        navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
                     }
                 };
 
@@ -571,7 +865,9 @@
                 });
 
                 const calcularAproveitamentoLocal = (estat) => {
-                    let v = loggedInUser.value === 1 ? estat.vitoriasFilho : estat.vitoriasPai;
+                    // Trata aproveitamento visual neutro ou baseado no jogador ativo
+                    let usr = loggedInUser.value === 2 ? 2 : 1;
+                    let v = usr === 1 ? estat.vitoriasFilho : estat.vitoriasPai;
                     return estat.total ? Math.round((v / estat.total) * 100) : 0;
                 };
 
@@ -587,40 +883,38 @@
                 };
 
                 const uploadProfilePhoto = async (ev) => {
+                    if(loggedInUser.value === 0) return;
                     const f = ev.target.files[0]; if (!f) return;
                     const base64Comprimido = await comprimirEConverterImagem(f);
                     try {
-                        await window.FB.setDoc(window.FB.doc(window.FB.db, "jogadores", activePlayer.value.docId), { 
-                            photo: base64Comprimido 
-                        }, { merge: true });
+                        await window.FB.setDoc(window.FB.doc(window.FB.db, "jogadores", activePlayer.value.docId), { photo: base64Comprimido }, { merge: true });
                         activePlayer.value.photo = base64Comprimido;
-                        alert("Foto de perfil atualizada com sucesso!");
-                    } catch (err) { 
-                        console.error("Erro do Firebase:", err); 
-                        alert("Erro ao salvar foto de perfil no Firebase."); 
-                    }
+                        alert("Foto de perfil atualizada!");
+                    } catch (err) { alert("Erro ao salvar foto de perfil."); }
                 };
 
                 const uploadCourtPhoto = async (ev, loc) => {
+                    if(loggedInUser.value === 0) return;
                     const f = ev.target.files[0]; if (!f) return;
                     const base64Comprimido = await comprimirEConverterImagem(f);
                     try {
                         await window.FB.updateDoc(window.FB.doc(window.FB.db, "locais", loc.id), { foto: base64Comprimido });
                         loc.foto = base64Comprimido;
                         alert("Foto da quadra atualizada!");
-                    } catch (err) { console.error(err); alert("Erro ao salvar foto da quadra."); }
+                    } catch (err) { alert("Erro ao salvar foto da quadra."); }
                 };
 
                 const apagarLocal = async (loc) => {
+                    if(loggedInUser.value === 0) return;
                     if (!confirm(`Deseja apagar o local "${loc.nome}" permanentemente?`)) return;
                     try {
                         await window.FB.deleteDoc(window.FB.doc(window.FB.doc(window.FB.db, "locais", loc.id)));
                         locaisLista.value = locaisLista.value.filter(l => l.id !== loc.id);
-                        alert("Local excluído com sucesso!");
                     } catch (e) { console.error(e); }
                 };
 
                 const registerMatch = async () => {
+                    if(loggedInUser.value === 0) return;
                     let lf = form.value.localSelecionado;
                     if (lf === 'novo') {
                         lf = form.value.novoLocalNome.trim();
@@ -683,6 +977,7 @@
                 };
 
                 const carregarParaEdicao = (m) => {
+                    if(loggedInUser.value === 0) return;
                     form.value = { 
                         id: m.id, tipo: m.tipo, localSelecionado: m.local, novoLocalNome: '', quadra: m.quadra, 
                         tipoTerceiroSet: m.tipoTerceiroSet || 'super',
@@ -695,6 +990,7 @@
                 const resetForm = () => form.value = { id: null, tipo: 'oficial', localSelecionado: '', novoLocalNome: '', quadra: 'Saibro', tipoTerceiroSet: 'super', set1_j1: 0, set1_j2: 0, set2_j1: 0, set2_j2: 0, set3_j1: 0, set3_j2: 0, data: new Date().toISOString().split('T')[0] };
 
                 const apagarPartida = async (m) => {
+                    if(loggedInUser.value === 0) return;
                     if (!confirm("Deseja apagar essa partida?")) return;
                     await window.FB.deleteDoc(window.FB.doc(window.FB.db, "partidas", m.id));
                     matches.value = matches.value.filter(x => x.id !== m.id);
@@ -702,13 +998,14 @@
                 };
 
                 return {
-                    autenticado, senhaInput, verificarSenha,
-                    phoneActiveTab, players, matches, locaisLista, form, sortedMatches, currentKing, currentLoser,
+                    autenticado, senhaInput, verificarSenha, logout,
+                    phoneActiveTab, players, matches, locaisLista, form, sortedMatches, dashboardMatches, filteredHistoryMatches, historyFilter, currentKing, currentLoser,
                     showProfileModal, winRate, formatScore, registerMatch, apagarPartida, statsFilter,
                     getLocalPhoto, locaisEstatísticas, loggedInUser, activePlayer, filteredWinRate, isConfrontoEmpatado,
                     uploadProfilePhoto, uploadCourtPhoto, carregarParaEdicao, resetForm, FOTO_PADRAO, apagarLocal,
                     calcularAproveitamentoLocal, totaisAcumulados, validarInputSet,
-                    statsYearFilter, listaAnosDisponiveis, deferredPrompt, installPWA
+                    statsYearFilter, listaAnosDisponiveis, deferredPrompt, installPWA,
+                    sequenciaAtual, maiorSequenciaHistorica, totaisClutch, atualizarGrafico
                 };
             }
         }).mount('#app');
