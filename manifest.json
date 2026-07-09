@@ -1,0 +1,22 @@
+<!-- html-blob-id: manifest.json -->
+{
+  "default_locale": "pt-BR",
+  "name": "Machado's Grand Slam",
+  "short_name": "Machado Tennis",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#13301c",
+  "theme-color": "#13301c",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=192&q=80",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=512&q=80",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
