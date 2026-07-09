@@ -2,17 +2,18 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Machado's Grand Slam</title>
     <meta name="theme-color" content="#13301c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json;base64,ewogICJkZWZhdWx0X2xvY2FsZSI6ICJwdC1CUiIsCiAgIm5hbWUiOiAiTWFjaGFkbydzIEdyYW5kIFNsYW0iLAogICJzaG9ydF9uYW1lIjogIk1hY2hhZG8gVGVubmlzIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMzMwMWMiLAogICJ0aGVtZV9jb2xvciI6ICIjMTMzMDFjIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9pbWFnZXMudW5zcGxhc2guY29tL3Bob3RvLTE1OTU0MzU5MzQyNDktNWRmN2VkODZlMWMwP2F1dG89Zm9ybWF0JmZpdD1jcm9wJnc9MTkyJnE9ODAiLAogICAgICAic2l6ZXMiOiAiMTkyeDE5MiIsCiAgICAgICJ0eXBlIjogImltYWdlL2pwZWciCiAgICB9LAogICAgewogICAgICAic3JjIjogImh0dHBzOi8vaW1hZ2VzLnVuc3Bsc2guY29tL3Bob3RvLTE1OTU0MzU5MzQyNDktNWRmN2VkODZlMWMwP2F1dG89Zm9ybWF0JmZpdD1jcm9wJnc9NTEyJnE9ODAiLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL2pwZWciCiAgICB9CiAgXQp9">
+    <link rel="manifest" href="data:application/json;base64,ewogICJkZWZhdWx0X2xvY2FsZSI6ICJwdC1CUiIsCiAgIm5hbWUiOiAiTWFjaGFkbydzIEdyYW5kIFNsYW0iLAogICJzaG9ydF9uYW1lIjogIk1hY2hhZG8gVGVubmlzIiwKICAic3RhcnRfdXJsIjogIi4vaW5kZXguaHRtbCIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzEzMzAxYyIsCiAgInRoZW1lX2NvbG9yIjogIiMxMzMwMWMiLAogICJpY29uczI6IFsKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2ltYWdlcy51bnNwbGFzaC5jb20vcGhvdG8tMTU5NTQzNTkzNDI0OS01ZGY3ZWQ4NmUxYzA/YXV0bz1mb3JtYXQmZml0PWNyb3cmdz0xOTImcT04MCIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaWWFnaS9qcGVnIgogICkKICBdCn0=">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;600;700&family=JetBrains+Mono:wght=400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.2/browser-image-compression.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -24,7 +25,7 @@
         }
     </script>
 </head>
-<body class="bg-tennis-light text-slate-800 min-h-screen font-sans antialiased">
+<body class="bg-tennis-light text-slate-800 min-h-screen font-sans antialiased select-none">
 
     <div id="app" class="flex flex-col min-h-screen max-w-md mx-auto bg-white shadow-xl md:max-w-2xl lg:max-w-4xl">
         
@@ -364,7 +365,6 @@
                 const deferredPrompt = ref(null); 
                 const FOTO_PADRAO = "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=400&q=80";
 
-                // Gerenciamento de Senha Autenticada
                 const autenticado = ref(sessionStorage.getItem('app_machado_auth') === 'true');
                 const senhaInput = ref('');
 
@@ -416,17 +416,15 @@
                 const validarInputSet = (campo) => {
                     let val = parseInt(form.value[campo], 10);
                     if (isNaN(val) || val < 0) form.value[campo] = 0;
-                    if (val > 99) form.value[campo] = 99; // Ampliado o limite máximo para aceitar super tie-breaks longos
+                    if (val > 99) form.value[campo] = 99; 
                 };
 
-                // Lógica interna para conferir se um set normal (até 6 convencional) terminou por completo
                 const conferirSetNormalCompleto = (a, b) => {
                     if ((a === 6 && b <= 4) || (b === 6 && a <= 4)) return true;
                     if ((a === 7 && (b === 5 || b === 6)) || (b === 7 && (a === 5 || a === 6))) return true;
                     return false;
                 };
 
-                // Lógica interna para conferir se um Super Tiebreak (até 10) terminou por completo
                 const conferirSuperTieCompleto = (a, b) => {
                     if (a >= 10 && (a - b) >= 2) return true;
                     if (b >= 10 && (b - a) >= 2) return true;
@@ -469,7 +467,6 @@
                 const calcularVitoriasDinamicas = () => {
                     let f = 0, p = 0;
                     matches.value.forEach(m => { 
-                        // Partidas incompletas não contabilizam no placar geral/coroa
                         if (m.tipo === 'oficial' && m.status !== 'Incompleto') { 
                             m.vencedor_id === 1 ? f++ : (m.vencedor_id === 2 ? p++ : 0); 
                         } 
@@ -477,34 +474,33 @@
                     players.value[0].wins = f; players.value[1].wins = p;
                 };
 
-                // Comprime fotos pesadas da galeria antes de enviar ao Firebase para evitar o erro de limite do Firestore (1MB)
-                const comprimirEConverterImagem = (file) => {
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(file);
-                        reader.onload = (event) => {
-                            const img = new Image();
-                            img.src = event.target.result;
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                const MAX_WIDTH = 600;
-                                const scaleSize = MAX_WIDTH / img.width;
-                                
-                                if (img.width > MAX_WIDTH) {
-                                    canvas.width = MAX_WIDTH;
-                                    canvas.height = img.height * scaleSize;
-                                } else {
-                                    canvas.width = img.width;
-                                    canvas.height = img.height;
-                                }
-                                
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                // Converte comprimindo em JPEG com 75% de qualidade original
-                                resolve(canvas.toDataURL('image/jpeg', 0.75));
-                            };
-                        };
-                    });
+                // Nova função utilizando de verdade o pacote "browser-image-compression" instalado
+                const comprimirEConverterImagem = async (file) => {
+                    const opcoes = {
+                        maxSizeMB: 0.15, // Reduz o tamanho final de forma agressiva para caber folgado no Firestore (< 150KB)
+                        maxWidthOrHeight: 600, // Limita a resolução máxima
+                        useWebWorker: true,
+                        fileType: 'image/jpeg'
+                    };
+                    try {
+                        // Faz a compressão profissional usando a biblioteca requisitada
+                        const arquivoComprimido = await imageCompression(file, opcoes);
+                        
+                        // Transforma o arquivo comprimido em Base64 string para envio direto ao banco
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(arquivoComprimido);
+                            reader.onloadend = () => resolve(reader.result);
+                        });
+                    } catch (error) {
+                        console.error("Erro na biblioteca de compressão:", error);
+                        // Fallback de segurança simplificado caso algo falhe
+                        return new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload = (e) => resolve(e.target.result);
+                        });
+                    }
                 };
 
                 const inicializarPWA = () => {
@@ -519,10 +515,9 @@
                     });
 
                     if ('serviceWorker' in navigator) {
-                        const swCode = `self.addEventListener('fetch', function(event) {});`;
-                        const blob = new Blob([swCode], { type: 'application/javascript' });
-                        const swUrl = URL.createObjectURL(blob);
-                        navigator.serviceWorker.register(swUrl).catch(err => console.log('Erro SW:', err));
+                        navigator.serviceWorker.register('./sw.js')
+                        .then(() => console.log('Service Worker Registrado Ativo!'))
+                        .catch(err => console.log('Erro ao registrar SW:', err));
                     }
                 };
 
@@ -623,16 +618,13 @@
                     let s2G = form.value.set2_j1, s2O = form.value.set2_j2;
                     let s3G = form.value.set3_j1, s3O = form.value.set3_j2;
 
-                    // VALIDAR SE JOGO ESTÁ COMPLETO OU INCOMPLETO
                     let jogoCompleto = true;
                     if (!conferirSetNormalCompleto(s1G, s1O)) jogoCompleto = false;
                     if (!conferirSetNormalCompleto(s2G, s2O)) jogoCompleto = false;
 
-                    // Verifica quem ganhou os primeiros sets
                     let parcialG = (s1G > s1O ? 1:0) + (s2G > s2O ? 1:0);
                     let parcialO = (s1O > s1G ? 1:0) + (s2O > s2G ? 1:0);
                     
-                    // Empatou em 1x1 em sets ou possui valores digitados no terceiro set
                     let exigeTerceiroSet = (parcialG === 1 && parcialO === 1);
                     let temDadosNoTerceiroSet = (s3G > 0 || s3O > 0);
 
@@ -644,12 +636,10 @@
                         }
                     }
 
-                    // Determinação correta do vencedor por sets
                     let setsG = (s1G > s1O ? 1:0) + (s2G > s2O ? 1:0) + (s3G > s3O ? 1:0);
                     let setsO = (s1O > s1G ? 1:0) + (s2O > s2G ? 1:0) + (s3O > s3G ? 1:0);
                     let vencedor_id = setsG > setsO ? 1 : 2;
 
-                    // Se empatar e for incompleto, calcula pelo saldo parcial para não dar nulo
                     if (!jogoCompleto && setsG === setsO) {
                         vencedor_id = (s1G+s2G+s3G) >= (s1O+s2O+s3O) ? 1 : 2;
                     }
