@@ -899,12 +899,12 @@
                         const qPlayers = await window.FB.getDocs(window.FB.collection(window.FB.db, "jogadores"));
                         
                         if (qPlayers.empty) {
-                            for (const p of players.value) {
-                                await window.FB.setDoc(window.FB.doc(window.FB.db, "jogadores", p.docId), {
+                            await Promise.all(players.value.map(p =>
+                                window.FB.setDoc(window.FB.doc(window.FB.db, "jogadores", p.docId), {
                                     name: p.name,
                                     photo: p.photo
-                                });
-                            }
+                                })
+                            ));
                         } else {
                             qPlayers.forEach(docSnap => {
                                 const pIdx = players.value.findIndex(p => p.docId === docSnap.id);
