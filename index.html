@@ -501,6 +501,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { testSetLongo } from "./utils.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCxflD0IniEjX_M6YDLLdBK4w9gCAJ5ocg",
@@ -673,7 +674,6 @@
                     let clutch = { terceiroSetFilho: 0, terceiroSetPai: 0, setsLongosFilho: 0, setsLongosPai: 0 };
                     
                     filteredMatchesForStats.value.forEach(m => {
-                        const testSetLongo = (j1, j2) => (j1 === 7 && (j2 === 5 || j2 === 6));
                         if (testSetLongo(m.set1_j1, m.set1_j2)) clutch.setsLongosFilho++;
                         if (testSetLongo(m.set1_j2, m.set1_j1)) clutch.setsLongosPai++;
                         if (testSetLongo(m.set2_j1, m.set2_j2)) clutch.setsLongosFilho++;
