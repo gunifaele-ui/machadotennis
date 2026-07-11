@@ -505,7 +505,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCxflD0IniEjX_M6YDLLdBK4w9gCAJ5ocg",
@@ -518,7 +518,7 @@
 
         const firebaseApp = initializeApp(firebaseConfig);
         const db = getFirestore(firebaseApp);
-        window.FB = { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc };
+        window.FB = { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where };
 
         const { createApp, ref, computed, onMounted } = Vue;
 
@@ -554,28 +554,33 @@
                 const senhaInput = ref('');
                 let instaciaGrafico = null;
 
-                const verificarSenha = () => {
-                    if (senhaInput.value === '1998') {
-                        loggedInUser.value = 1; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '1');
-                        carregarDadosDoBanco();
-                    } else if (senhaInput.value === '1977') {
-                        loggedInUser.value = 2; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '2');
-                        carregarDadosDoBanco();
-                    } else if (senhaInput.value === '0000') {
-                        loggedInUser.value = 0; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '0');
-                        carregarDadosDoBanco();
-                    } else {
-                        alert('Senha incorreta! Tente novamente.');
-                        senhaInput.value = '';
+                const verificarSenha = async () => {
+                    if (!senhaInput.value) {
+                        alert('Por favor, insira a senha.');
+                        return;
+                    }
+
+                    try {
+                        const q = window.FB.query(
+                            window.FB.collection(window.FB.db, "jogadores"),
+                            window.FB.where("pin", "==", senhaInput.value)
+                        );
+                        const qPlayers = await window.FB.getDocs(q);
+
+                        if (!qPlayers.empty) {
+                            const authenticatedId = qPlayers.docs[0].data().id;
+                            loggedInUser.value = authenticatedId;
+                            autenticado.value = true;
+                            sessionStorage.setItem('app_machado_auth', 'true');
+                            sessionStorage.setItem('app_machado_user', authenticatedId.toString());
+                            carregarDadosDoBanco();
+                        } else {
+                            alert('Senha incorreta! Tente novamente.');
+                            senhaInput.value = '';
+                        }
+                    } catch (error) {
+                        console.error('Erro ao verificar a senha:', error);
+                        alert('Ocorreu um erro ao verificar a senha.');
                     }
                 };
 
