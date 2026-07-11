@@ -19,7 +19,8 @@
     <!-- Bibliotecas para exportação de PDF de forma nativa e client-side -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    
+    <script src="./formatScore.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -1011,12 +1012,6 @@
                 const winRate = (p) => {
                     const t = players.value[0].wins + players.value[1].wins;
                     return t ? Math.round((p.wins / t) * 100) : 0;
-                };
-
-                const formatScore = (m) => {
-                    let s = `${m.set1_j1}-${m.set1_j2}, ${m.set2_j1}-${m.set2_j2}`;
-                    if (m.set3_j1 !== null && m.set3_j2 !== null) s += `, ${m.set3_j1}-${m.set3_j2}`;
-                    return s;
                 };
 
                 const uploadProfilePhoto = async (ev) => {
