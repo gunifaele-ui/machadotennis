@@ -707,12 +707,14 @@
                     return false;
                 };
 
-                const vitoriasPorcentagem = computed(() => {
-                    const f = filteredMatchesForStats.value.filter(m => m.vencedor_id !== 0 && m.status !== 'Incompleto');
+                const calculateWinRate = (matchesList) => {
+                    const f = matchesList.filter(m => m.vencedor_id !== 0 && m.status !== 'Incompleto');
                     if(!f.length) return { j1: 0, j2: 0 };
                     let j1 = f.filter(m => m.vencedor_id === 1).length;
                     return { j1: Math.round((j1 / f.length) * 100), j2: Math.round(((f.length - j1) / f.length) * 100) };
-                });
+                };
+
+                const vitoriasPorcentagem = computed(() => calculateWinRate(filteredMatchesForStats.value));
 
                 // Estatística computada de vitórias absolutas por tipo de superfície de quadra
                 const vitoriasSuperficie = computed(() => {
@@ -981,12 +983,7 @@
                     return l?.foto || FOTO_PADRAO;
                 };
 
-                const filteredWinRate = computed(() => {
-                    const f = filteredMatchesForStats.value.filter(m => m.vencedor_id !== 0 && m.status !== 'Incompleto');
-                    if(!f.length) return { j1: 0, j2: 0 };
-                    let j1 = f.filter(m => m.vencedor_id === 1).length;
-                    return { j1: Math.round((j1 / f.length) * 100), j2: Math.round(((f.length - j1) / f.length) * 100) };
-                });
+                const filteredWinRate = computed(() => calculateWinRate(filteredMatchesForStats.value));
 
                 const locaisEstatísticas = computed(() => {
                     const est = {};
