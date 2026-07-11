@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tests - Machado's Grand Slam</title>
+  <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="https://unpkg.com/chai/chai.js"></script>
+  <script src="https://unpkg.com/mocha/mocha.js"></script>
+  <script>
+    mocha.setup('bdd');
+  </script>
+  <script type="module">
+    import { testSetLongo } from './utils.js';
+    const assert = chai.assert;
+
+    describe('testSetLongo', function() {
+      it('should return true when player 1 wins 7-5', function() {
+        assert.isTrue(testSetLongo(7, 5));
+      });
+
+      it('should return true when player 1 wins 7-6', function() {
+        assert.isTrue(testSetLongo(7, 6));
+      });
+
+      it('should return false when player 1 wins 6-4', function() {
+        assert.isFalse(testSetLongo(6, 4));
+      });
+
+      it('should return false when player 1 loses 5-7', function() {
+        assert.isFalse(testSetLongo(5, 7));
+      });
+
+      it('should return false when player 1 loses 6-7', function() {
+        assert.isFalse(testSetLongo(6, 7));
+      });
+
+      it('should return false for invalid or other scores like 8-6', function() {
+        assert.isFalse(testSetLongo(8, 6));
+      });
+
+      it('should return false for tie-break games like 1-0 or anything else', function() {
+        assert.isFalse(testSetLongo(1, 0));
+        assert.isFalse(testSetLongo(0, 0));
+        assert.isFalse(testSetLongo(7, 4)); // Normally a set is 6-4, but 7-4 might be tiebreak points
+        assert.isFalse(testSetLongo(7, 7));
+      });
+    });
+
+    mocha.run();
+  </script>
+</body>
+</html>
