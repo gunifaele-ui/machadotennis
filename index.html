@@ -501,6 +501,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { calculateWinRate } from './js/utils.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCxflD0IniEjX_M6YDLLdBK4w9gCAJ5ocg",
@@ -1010,7 +1011,7 @@
 
                 const winRate = (p) => {
                     const t = players.value[0].wins + players.value[1].wins;
-                    return t ? Math.round((p.wins / t) * 100) : 0;
+                    return calculateWinRate(p.wins, t);
                 };
 
                 const formatScore = (m) => {

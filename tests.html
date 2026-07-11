@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tests</title>
+</head>
+<body>
+    <script type="module">
+        import { calculateWinRate } from './js/utils.js';
+
+        let failed = false;
+
+        const assert = (condition, message) => {
+            if (!condition) {
+                console.error(message);
+                failed = true;
+            }
+        };
+
+        try {
+            assert(calculateWinRate(0, 0) === 0, "Test failed: calculateWinRate(0, 0) should be 0");
+            assert(calculateWinRate(5, 5) === 100, "Test failed: calculateWinRate(5, 5) should be 100");
+            assert(calculateWinRate(0, 5) === 0, "Test failed: calculateWinRate(0, 5) should be 0");
+            assert(calculateWinRate(1, 3) === 33, "Test failed: calculateWinRate(1, 3) should be 33");
+            assert(calculateWinRate(2, 3) === 67, "Test failed: calculateWinRate(2, 3) should be 67");
+            console.log("Tests executed in test.html");
+        } catch (e) {
+            console.error(e);
+            failed = true;
+        }
+
+        if (failed) {
+            const div = document.createElement('div');
+            div.id = 'tests-failed';
+            div.innerText = 'Tests Failed';
+            document.body.appendChild(div);
+        } else {
+            const div = document.createElement('div');
+            div.id = 'tests-passed';
+            div.innerText = 'All Tests Passed';
+            document.body.appendChild(div);
+        }
+    </script>
+</body>
+</html>
