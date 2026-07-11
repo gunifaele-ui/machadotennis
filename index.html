@@ -500,7 +500,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCxflD0IniEjX_M6YDLLdBK4w9gCAJ5ocg",
@@ -513,14 +513,14 @@
 
         const firebaseApp = initializeApp(firebaseConfig);
         const db = getFirestore(firebaseApp);
-        window.FB = { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc };
+        window.FB = { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where, limit };
 
         const { createApp, ref, computed, onMounted } = Vue;
 
         createApp({
             setup() {
                 const phoneActiveTab = ref('dashboard');
-                const loggedInUser = ref(parseInt(sessionStorage.getItem('app_machado_user') || '1', 10)); 
+                const loggedInUser = ref(0);
                 const showProfileModal = ref(false);
                 const statsFilter = ref('oficial');
                 const statsYearFilter = ref('todos'); 
@@ -528,41 +528,69 @@
                 const deferredPrompt = ref(null); 
                 const FOTO_PADRAO = "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=400&q=80";
 
-                const autenticado = ref(sessionStorage.getItem('app_machado_auth') === 'true');
+                const autenticado = ref(false);
                 const senhaInput = ref('');
                 let instaciaGrafico = null;
 
-                const verificarSenha = () => {
-                    if (senhaInput.value === '1998') {
-                        loggedInUser.value = 1; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '1');
-                        carregarDadosDoBanco();
-                    } else if (senhaInput.value === '1977') {
-                        loggedInUser.value = 2; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '2');
-                        carregarDadosDoBanco();
-                    } else if (senhaInput.value === '0000') {
-                        loggedInUser.value = 0; 
-                        autenticado.value = true;
-                        sessionStorage.setItem('app_machado_auth', 'true');
-                        sessionStorage.setItem('app_machado_user', '0');
-                        carregarDadosDoBanco();
-                    } else {
-                        alert('Senha incorreta! Tente novamente.');
-                        senhaInput.value = '';
+                const verificarSenha = async () => {
+                    try {
+                        const q = window.FB.query(
+                            window.FB.collection(window.FB.db, "senhas"),
+                            window.FB.where("senha", "==", senhaInput.value),
+                            window.FB.limit(1)
+                        );
+                        const querySnapshot = await window.FB.getDocs(q);
+
+                        if (!querySnapshot.empty) {
+                            const senhaDoc = querySnapshot.docs[0];
+                            const data = senhaDoc.data();
+
+                            const array = new Uint8Array(32);
+                            window.crypto.getRandomValues(array);
+                            const sessionToken = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+                            await window.FB.addDoc(window.FB.collection(window.FB.db, "sessions"), {
+                                token: sessionToken,
+                                userId: data.user,
+                                createdAt: new Date().toISOString()
+                            });
+
+                            loggedInUser.value = data.user;
+                            autenticado.value = true;
+                            sessionStorage.setItem('app_machado_session', sessionToken);
+
+                            carregarDadosDoBanco();
+                        } else {
+                            alert('Senha incorreta! Tente novamente.');
+                            senhaInput.value = '';
+                        }
+                    } catch (error) {
+                        console.error("Erro ao verificar senha:", error);
+                        alert("Ocorreu um erro ao verificar a senha.");
                     }
                 };
 
-                const logout = () => {
+                const logout = async () => {
+                    const sessionToken = sessionStorage.getItem('app_machado_session');
+                    if (sessionToken) {
+                        try {
+                            const q = window.FB.query(
+                                window.FB.collection(window.FB.db, "sessions"),
+                                window.FB.where("token", "==", sessionToken),
+                                window.FB.limit(1)
+                            );
+                            const querySnapshot = await window.FB.getDocs(q);
+                            if (!querySnapshot.empty) {
+                                await window.FB.deleteDoc(querySnapshot.docs[0].ref);
+                            }
+                        } catch(e) {
+                            console.error("Erro ao fazer logout:", e);
+                        }
+                    }
                     autenticado.value = false;
+                    loggedInUser.value = 0;
                     senhaInput.value = '';
                     showProfileModal.value = false;
-                    sessionStorage.removeItem('app_machado_auth');
-                    sessionStorage.removeItem('app_machado_user');
+                    sessionStorage.removeItem('app_machado_session');
                 };
 
                 const players = ref([
@@ -969,9 +997,28 @@
                     if (outcome === 'accepted') deferredPrompt.value = null;
                 };
 
-                onMounted(() => {
-                    if (autenticado.value) {
-                        carregarDadosDoBanco();
+                onMounted(async () => {
+                    const sessionToken = sessionStorage.getItem('app_machado_session');
+                    if (sessionToken) {
+                        try {
+                            const q = window.FB.query(
+                                window.FB.collection(window.FB.db, "sessions"),
+                                window.FB.where("token", "==", sessionToken),
+                                window.FB.limit(1)
+                            );
+                            const querySnapshot = await window.FB.getDocs(q);
+                            if (!querySnapshot.empty) {
+                                const sessionData = querySnapshot.docs[0].data();
+                                loggedInUser.value = sessionData.userId;
+                                autenticado.value = true;
+                                carregarDadosDoBanco();
+                            } else {
+                                sessionStorage.removeItem('app_machado_session');
+                            }
+                        } catch (e) {
+                            console.error("Erro ao restaurar sessão:", e);
+                            sessionStorage.removeItem('app_machado_session');
+                        }
                     }
                     inicializarPWA();
                 });
