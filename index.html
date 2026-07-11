@@ -616,9 +616,12 @@
                     });
                 });
 
+                const oficiaisFinalizadasBase = computed(() => {
+                    return matches.value.filter(m => m.tipo === 'oficial' && m.status !== 'Incompleto');
+                });
+
                 const sequenciaAtual = computed(() => {
-                    const oficiaisFinalizadas = [...matches.value]
-                        .filter(m => m.tipo === 'oficial' && m.status !== 'Incompleto')
+                    const oficiaisFinalizadas = [...oficiaisFinalizadasBase.value]
                         .sort((a, b) => new Date(b.data) - new Date(a.data));
                     
                     if (oficiaisFinalizadas.length === 0) return { jogadorId: 0, total: 0 };
@@ -637,8 +640,7 @@
                 });
 
                 const maiorSequenciaHistorica = computed(() => {
-                    const oficiaisFinalizadasCr = [...matches.value]
-                        .filter(m => m.tipo === 'oficial' && m.status !== 'Incompleto')
+                    const oficiaisFinalizadasCr = [...oficiaisFinalizadasBase.value]
                         .sort((a, b) => new Date(a.data) - new Date(b.data));
                         
                     if (oficiaisFinalizadasCr.length === 0) return { jogadorId: 0, total: 0 };
