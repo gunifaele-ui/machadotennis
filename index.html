@@ -499,6 +499,7 @@
     </div>
 
     <script type="module">
+        import { validateSetInput } from "./js/validators.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -690,9 +691,7 @@
                 });
 
                 const validarInputSet = (campo) => {
-                    let val = parseInt(form.value[campo], 10);
-                    if (isNaN(val) || val < 0) form.value[campo] = 0;
-                    if (val > 99) form.value[campo] = 99; 
+                    form.value[campo] = validateSetInput(form.value[campo]);
                 };
 
                 const conferirSetNormalCompleto = (a, b) => {
