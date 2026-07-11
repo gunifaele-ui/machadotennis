@@ -52,6 +52,12 @@
             </div>
         </div>
 
+        <!-- Modal for zooming image -->
+        <div v-if="zoomedImage" class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 cursor-zoom-out" @click="zoomedImage = null">
+            <img :src="zoomedImage" class="max-w-full max-h-full object-contain rounded-xl shadow-2xl">
+            <button class="absolute top-4 right-4 text-white text-3xl opacity-70 hover:opacity-100 transition" @click="zoomedImage = null">&times;</button>
+        </div>
+
         <template v-if="autenticado">
             <header class="bg-tennis-brand text-white px-4 py-4 flex justify-between items-center sticky top-0 z-40 shadow-md">
                 <div class="flex items-center gap-3">
@@ -154,8 +160,8 @@
                             <div v-if="dashboardMatches.length === 0" class="w-full text-center text-xs text-slate-400 py-12 bg-white rounded-xl border border-dashed">Nenhuma partida oficial registrada.</div>
                             <div v-for="match in dashboardMatches.slice(0, 5)" :key="match.id" class="w-64 aspect-square bg-white rounded-xl border border-tennis-border overflow-hidden flex flex-col shadow-sm flex-shrink-0 snap-start">
                                 <div class="relative flex-grow min-h-0 bg-slate-200">
-                                    <img :src="getLocalPhoto(match.local)" class="w-full h-full object-cover">
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                    <img :src="getLocalPhoto(match.local)" class="w-full h-full object-cover cursor-zoom-in transition hover:opacity-90" @click="zoomedImage = getLocalPhoto(match.local)">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
                                     <span class="absolute top-2 left-2 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider" :class="match.status === 'Incompleto' ? 'bg-amber-500 text-tennis-dark' : (match.tipo === 'oficial' ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white')">
                                         {{ match.status === 'Incompleto' ? 'Incompleto' : match.tipo }}
                                     </span>
@@ -381,14 +387,13 @@
                         <h3 class="text-xs font-bold uppercase text-tennis-brand tracking-wider flex items-center gap-1"><i class="fa-solid fa-map-location-dot"></i> Desempenho por Clube</h3>
                         <div v-if="locaisEstatísticas.length === 0" class="text-center text-xs text-slate-400 py-6 bg-white rounded-xl border border-dashed">Sem dados disponíveis para este período.</div>
                         <div v-for="estat in locaisEstatísticas" :key="estat.nome" class="bg-white border border-tennis-border rounded-xl p-3 flex gap-3 items-center shadow-sm">
-                            <img :src="estat.foto" class="w-16 h-16 rounded-lg object-cover shadow-sm">
+                            <img :src="estat.foto" class="w-16 h-16 rounded-lg object-cover shadow-sm cursor-zoom-in transition hover:opacity-90" @click="zoomedImage = estat.foto">
                             <div class="flex-grow min-w-0 text-xs text-slate-500 font-medium grid grid-cols-2 gap-y-0.5">
                                 <h4 class="text-sm font-bold text-slate-800 col-span-2 truncate">{{ estat.nome }}</h4>
                                 <p>Jogos: <span class="font-mono text-slate-700 font-bold">{{ !estat.total ? 0 : estat.total }}</span></p>
-                                <p>Aproveitamento: <span class="font-mono text-tennis-accent font-bold">{{ calcularAproveitamentoLocal(estat) }}%</span></p>
                                 <!-- Exibição fixa para que qualquer convidado saiba quem ganhou -->
-                                <p>Gustavo ganhou: <span class="font-mono text-emerald-600 font-bold">{{ estat.vitoriasFilho }}</span></p>
-                                <p>Otávio ganhou: <span class="font-mono text-amber-600 font-bold">{{ estat.vitoriasPai }}</span></p>
+                                <p>Gustavo ganhou: <span class="font-mono text-emerald-600 font-bold">{{ estat.vitoriasFilho }} <span class="text-[10px] text-slate-400 font-normal">({{ estat.total ? Math.round((estat.vitoriasFilho / estat.total) * 100) : 0 }}%)</span></span></p>
+                                <p>Otávio ganhou: <span class="font-mono text-amber-600 font-bold">{{ estat.vitoriasPai }} <span class="text-[10px] text-slate-400 font-normal">({{ estat.total ? Math.round((estat.vitoriasPai / estat.total) * 100) : 0 }}%)</span></span></p>
                             </div>
                         </div>
                     </div>
@@ -475,7 +480,7 @@
                             <div class="space-y-2 mt-2">
                                 <div v-for="loc in locaisLista" :key="loc.id" class="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-200 gap-2">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <img :src="loc.foto || FOTO_PADRAO" class="w-8 h-8 object-cover rounded shadow-sm shrink-0">
+                                        <img :src="loc.foto || FOTO_PADRAO" class="w-8 h-8 object-cover rounded shadow-sm shrink-0 cursor-zoom-in transition hover:opacity-90" @click="zoomedImage = loc.foto || FOTO_PADRAO">
                                         <span class="text-xs font-semibold text-slate-700 truncate">{{ loc.nome }}</span>
                                     </div>
                                     <div class="flex items-center gap-1 shrink-0">
@@ -519,6 +524,7 @@
 
         createApp({
             setup() {
+                const zoomedImage = ref(null);
                 const phoneActiveTab = ref('dashboard');
                 const loggedInUser = ref(parseInt(sessionStorage.getItem('app_machado_user') || '1', 10)); 
                 const showProfileModal = ref(false);
@@ -1135,6 +1141,7 @@
                 };
 
                 return {
+                    zoomedImage,
                     autenticado, senhaInput, verificarSenha, logout,
                     phoneActiveTab, players, matches, locaisLista, form, sortedMatches, dashboardMatches, filteredHistoryMatches, historyFilter, currentKing, currentLoser,
                     showProfileModal, winRate, formatScore, registerMatch, apagarPartida, statsFilter,
