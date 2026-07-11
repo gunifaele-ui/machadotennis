@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.tooltip:hover .tooltip-text, .tooltip:focus-within .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
